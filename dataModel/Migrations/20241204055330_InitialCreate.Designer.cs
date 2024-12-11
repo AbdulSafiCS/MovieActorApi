@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using dataModel;
 
@@ -11,9 +12,11 @@ using dataModel;
 namespace dataModel.Migrations
 {
     [DbContext(typeof(MyFirstAppDatabaseContext))]
-    partial class MyFirstAppDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20241204055330_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -155,39 +158,6 @@ namespace dataModel.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("dataModel.Actor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Age")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CharacterName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("MovieId")
-                        .HasColumnType("int")
-                        .HasColumnName("movieID");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MovieId");
-
-                    b.ToTable("Actors");
-                });
-
             modelBuilder.Entity("dataModel.AppUser", b =>
                 {
                     b.Property<string>("Id")
@@ -253,7 +223,7 @@ namespace dataModel.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("dataModel.Movie", b =>
+            modelBuilder.Entity("dataModel.City", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -262,27 +232,64 @@ namespace dataModel.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Genre")
+                    b.Property<int>("CountryId")
+                        .HasColumnType("int")
+                        .HasColumnName("countryID");
+
+                    b.Property<decimal>("Lat")
+                        .HasColumnType("decimal(8, 6)");
+
+                    b.Property<decimal>("Lng")
+                        .HasColumnType("decimal(9, 6)");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<decimal>("Rating")
-                        .HasColumnType("decimal(3,1)");
-
-                    b.Property<DateTime>("ReleaseDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)");
+                    b.Property<int>("Population")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Movies");
+                    b.HasIndex("CountryId");
+
+                    b.ToTable("Cities");
+                });
+
+            modelBuilder.Entity("dataModel.Country", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ID");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Iso2")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .IsUnicode(false)
+                        .HasColumnType("char(2)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Iso3")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Countries");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -336,21 +343,20 @@ namespace dataModel.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("dataModel.Actor", b =>
+            modelBuilder.Entity("dataModel.City", b =>
                 {
-                    b.HasOne("dataModel.Movie", "Movie")
-                        .WithMany("Actors")
-                        .HasForeignKey("MovieId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("dataModel.Country", "Country")
+                        .WithMany("Cities")
+                        .HasForeignKey("CountryId")
                         .IsRequired()
-                        .HasConstraintName("FK_Actors_Movies");
+                        .HasConstraintName("FK_Cities_Countries");
 
-                    b.Navigation("Movie");
+                    b.Navigation("Country");
                 });
 
-            modelBuilder.Entity("dataModel.Movie", b =>
+            modelBuilder.Entity("dataModel.Country", b =>
                 {
-                    b.Navigation("Actors");
+                    b.Navigation("Cities");
                 });
 #pragma warning restore 612, 618
         }

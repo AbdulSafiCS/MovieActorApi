@@ -23,8 +23,8 @@ builder.Services.AddSwaggerGen(c => {
             Name = "Abdul Safi",
             Url = new("https://canvas.csun.edu/courses/128137")
         },
-        Description = "APIs for World Cities",
-        Title = "World Cities APIs",
+        Description = "APIs for Actors and Movies",
+        Title = "Actors and Movies APIs",
         Version = "V1"
     });
     OpenApiSecurityScheme jwtSecurityScheme = new()

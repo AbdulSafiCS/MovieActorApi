@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using dataModel;
 
@@ -11,9 +12,11 @@ using dataModel;
 namespace dataModel.Migrations
 {
     [DbContext(typeof(MyFirstAppDatabaseContext))]
-    partial class MyFirstAppDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20241204074253_AddMoviesAndActorsTables")]
+    partial class AddMoviesAndActorsTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -341,7 +344,6 @@ namespace dataModel.Migrations
                     b.HasOne("dataModel.Movie", "Movie")
                         .WithMany("Actors")
                         .HasForeignKey("MovieId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_Actors_Movies");
 

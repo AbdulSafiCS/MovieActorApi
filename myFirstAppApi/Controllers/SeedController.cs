@@ -1,29 +1,37 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
 using dataModel;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
-using myFirstAppApi.Data;
-using System;
 using System.Globalization;
 
 namespace myFirstAppApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SeedController(MyFirstAppDatabaseContext context,  IHostEnvironment environment, UserManager<AppUser> userManager) : ControllerBase
+    public class SeedController : ControllerBase
     {
-        private readonly string _pathName = Path.Combine(environment.ContentRootPath, "Data/worldcities.csv");
-        [HttpPost("Countries")]
-        public async Task<IActionResult> ImportCountriesAsync()
+        private readonly MyFirstAppDatabaseContext _context;
+        private readonly IHostEnvironment _environment;
+        private readonly string _moviesPath;
+        private readonly string _actorsPath;
+
+        public SeedController(MyFirstAppDatabaseContext context, IHostEnvironment environment)
         {
-            // create a lookup dictionary containing all the countries already existing 
-            // into the Database (it will be empty on first run).
-            Dictionary<string, Country> countriesByName = context.Countries
-                .AsNoTracking().ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+            _context = context;
+            _environment = environment;
+            _moviesPath = Path.Combine(environment.ContentRootPath, "Data/movies.csv");
+            _actorsPath = Path.Combine(environment.ContentRootPath, "Data/actors.csv");
+        }
+
+        // POST: api/Seed/Movies
+        [HttpPost("Movies")]
+        public async Task<IActionResult> ImportMoviesAsync()
+        {
+            var moviesByTitle = _context.Movies
+                .AsNoTracking()
+                .ToDictionary(x => x.Title.Trim().ToLower(), x => x);
 
             CsvConfiguration config = new(CultureInfo.InvariantCulture)
             {
@@ -31,98 +39,94 @@ namespace myFirstAppApi.Controllers
                 HeaderValidated = null
             };
 
-            using StreamReader reader = new(_pathName);
+            using StreamReader reader = new(_moviesPath);
             using CsvReader csv = new(reader, config);
 
-            List<WorldCitiesCSV> records = csv.GetRecords<WorldCitiesCSV>().ToList();
-            foreach (WorldCitiesCSV record in records)
+            var records = csv.GetRecords<MovieCSV>().ToList();
+            foreach (var record in records)
             {
-                if (countriesByName.ContainsKey(record.country))
+                var title = record.Title.Trim().ToLower();
+                if (moviesByTitle.ContainsKey(title)) continue;
+
+                var movie = new Movie
                 {
+                    Title = record.Title.Trim(),
+                    ReleaseDate = DateTime.Parse(record.ReleaseDate),
+                    Genre = record.Genre.Trim(),
+                    Rating = record.Rating
+                };
+
+                await _context.Movies.AddAsync(movie);
+                moviesByTitle.Add(title, movie);
+            }
+
+            await _context.SaveChangesAsync();
+            return new JsonResult(moviesByTitle.Count);
+        }
+
+        // POST: api/Seed/Actors
+        [HttpPost("Actors")]
+        public async Task<IActionResult> ImportActorsAsync()
+        {
+            // Create a lookup dictionary for existing movies
+            Dictionary<string, Movie> movies = await _context.Movies
+                .ToDictionaryAsync(m => m.Title.Trim().ToLower(), m => m);
+
+            CsvConfiguration config = new(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true,
+                HeaderValidated = null
+            };
+
+            int actorCount = 0;
+
+            using StreamReader reader = new(_actorsPath);
+            using CsvReader csv = new(reader, config);
+
+            var records = csv.GetRecords<ActorCSV>();
+            foreach (var record in records)
+            {
+                var movieTitle = record.MovieTitle.Trim().ToLower();
+                if (!movies.TryGetValue(movieTitle, out var movie))
+                {
+                    Console.WriteLine($"Movie not found for actor: {record.Name}, MovieTitle: {record.MovieTitle}");
                     continue;
                 }
 
-                Country country = new()
+                Actor actor = new()
                 {
-                    Name = record.country,
-                    Iso2 = record.iso2,
-                    Iso3 = record.iso3
+                    Name = record.Name.Trim(),
+                    Age = record.Age,
+                    CharacterName = record.CharacterName.Trim(),
+                    MovieId = movie.Id
                 };
-                await context.Countries.AddAsync(country);
-                countriesByName.Add(record.country, country);
+
+                _context.Actors.Add(actor);
+                actorCount++;
             }
 
-            await context.SaveChangesAsync();
-
-            return new JsonResult(countriesByName.Count);
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"Actors Imported: {actorCount}");
+            return new JsonResult(actorCount);
         }
-        [HttpPost("Cities")]
-        public async Task<IActionResult> ImportCitiesAsync()
+
+
+        // Movie CSV Structure
+        public class MovieCSV
         {
-            Dictionary<string, Country> countries = await context.Countries//.AsNoTracking()
-            .ToDictionaryAsync(c => c.Name);
-
-            CsvConfiguration config = new(CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = true,
-                HeaderValidated = null
-            };
-            int cityCount = 0;
-            using (StreamReader reader = new(_pathName))
-            using (CsvReader csv = new(reader, config))
-            {
-                IEnumerable<WorldCitiesCSV>? records = csv.GetRecords<WorldCitiesCSV>();
-                foreach (WorldCitiesCSV record in records)
-                {
-                    if (!countries.TryGetValue(record.country, out Country? value))
-                    {
-                        Console.WriteLine($"Not found country for {record.city}");
-                        return NotFound(record);
-                    }
-
-                    if (!record.population.HasValue || string.IsNullOrEmpty(record.city_ascii))
-                    {
-                        Console.WriteLine($"Skipping {record.city}");
-                        continue;
-                    }
-                    City city = new()
-                    {
-                        Name = record.city,
-                        Lat = record.lat,
-                        Lng = record.lng,
-                        Population = (int)record.population.Value,
-                        CountryId = value.Id
-                    };
-                    context.Cities.Add(city);
-                    cityCount++;
-                }
-                await context.SaveChangesAsync();
-            }
-            return new JsonResult(cityCount);
+            public string Title { get; set; }
+            public string ReleaseDate { get; set; }
+            public string Genre { get; set; }
+            public decimal Rating { get; set; }
         }
-        [HttpPost("Users")]
-        public async Task<ActionResult> ImportUsersAsync()
+
+        // Actor CSV Structure
+        public class ActorCSV
         {
-
-            (string name, string email) = ("DonaldTrump", "donald@trump.com");
-            
-            AppUser user = new AppUser()
-            {
-                UserName = name,
-                Email = email,
-                SecurityStamp = Guid.NewGuid().ToString()
-            };
-            if (await userManager.FindByEmailAsync(email) is not null)
-            {
-                return Ok(user);
-            }
-            IdentityResult result = await userManager.CreateAsync(user, "Maga1234!#");
-           
-            user.EmailConfirmed = true;
-            user.LockoutEnabled = false;
-            int x = await context.SaveChangesAsync();
-            return Ok(x);
-
+            public string Name { get; set; }
+            public int Age { get; set; }
+            public string CharacterName { get; set; }
+            public string MovieTitle { get; set; }
         }
     }
 }
