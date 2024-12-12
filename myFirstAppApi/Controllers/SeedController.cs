@@ -1,6 +1,7 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
 using dataModel;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -16,13 +17,15 @@ namespace myFirstAppApi.Controllers
         private readonly IHostEnvironment _environment;
         private readonly string _moviesPath;
         private readonly string _actorsPath;
+        private readonly UserManager<AppUser> _userManager;
 
-        public SeedController(MyFirstAppDatabaseContext context, IHostEnvironment environment)
+        public SeedController(MyFirstAppDatabaseContext context, IHostEnvironment environment, UserManager<AppUser> userManager)
         {
             _context = context;
             _environment = environment;
             _moviesPath = Path.Combine(environment.ContentRootPath, "Data/movies.csv");
             _actorsPath = Path.Combine(environment.ContentRootPath, "Data/actors.csv");
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         }
 
         // POST: api/Seed/Movies
@@ -110,9 +113,45 @@ namespace myFirstAppApi.Controllers
             return new JsonResult(actorCount);
         }
 
+        // POST: api/Seed/Users
+        [HttpPost("Users")]
+        public async Task<ActionResult> ImportUsersAsync()
+        {
+            (string name, string email) = ("Admin", "admin@admin.com");
 
-        // Movie CSV Structure
-        public class MovieCSV
+            AppUser user = new()
+            {
+                UserName = name,
+                Email = email,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+
+            if (await _userManager.FindByEmailAsync(email) is not null)
+            {
+                return Ok(user);
+            }
+
+            IdentityResult result = await _userManager.CreateAsync(user, "Admin1234!");
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            user.EmailConfirmed = true;
+            user.LockoutEnabled = false;
+
+            int changes = await _context.SaveChangesAsync();
+            return Ok(changes);
+        }
+    }
+
+
+}
+
+
+// Movie CSV Structure
+public class MovieCSV
         {
             public string Title { get; set; }
             public string ReleaseDate { get; set; }
@@ -128,5 +167,4 @@ namespace myFirstAppApi.Controllers
             public string CharacterName { get; set; }
             public string MovieTitle { get; set; }
         }
-    }
-}
+    

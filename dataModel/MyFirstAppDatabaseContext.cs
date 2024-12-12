@@ -78,5 +78,6 @@ public partial class MyFirstAppDatabaseContext : IdentityDbContext<AppUser>
         OnModelCreatingPartial(modelBuilder);
     }
 
+
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
