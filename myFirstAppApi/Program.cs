@@ -12,9 +12,11 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => {
+builder.Services.AddSwaggerGen(c =>
+{
     c.SwaggerDoc("v1", new()
     {
         Contact = new()
@@ -44,14 +46,20 @@ builder.Services.AddSwaggerGen(c => {
     c.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, jwtSecurityScheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        { jwtSecurityScheme, [] }
+        { jwtSecurityScheme, Array.Empty<string>() }
     });
 });
-builder.Services.AddDbContext<MyFirstAppDatabaseContext>(
-    options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-    );
+
+// Configure DbContext
+builder.Services.AddDbContext<MyFirstAppDatabaseContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+// Configure Identity
 builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<MyFirstAppDatabaseContext>();
+
+// Add JWT Authentication
 builder.Services.AddScoped<JwtHandler>();
 builder.Services.AddAuthentication(options =>
 {
@@ -70,6 +78,18 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecurityKey"]!))
     };
 });
+
+// Add CORS Policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowAnyOrigin();
+    });
+});
+
 WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -78,7 +98,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors(policy=>policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
+
+// Use CORS globally
+app.UseCors("AllowAll");
+
 app.UseAuthorization();
 
 app.MapControllers();

@@ -1,7 +1,7 @@
 {
   "Logging": {
     "LogLevel": {
-      "Default": "Information",
+      "Default": "Warning",
       "Microsoft.AspNetCore": "Warning"
     }
   },
@@ -13,13 +13,5 @@
     "Issuer": "csun.edu",
     "Audience": "countries.csun.edu",
     "ExpirationTimeInMinutes": 30
-  },
-  "AllowedHosts": "*"
+  }
 }
-
-
-//movie-actor 2 password //AnW3toSlPwgRer6Ckh37
-
-
-///movie-actors modified: FQL16qEAi5VooxMhftRC
-
